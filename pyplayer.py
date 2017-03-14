@@ -29,16 +29,38 @@ def processEvent(self, event):
 		return event
 
 class MusicPlayer():
-	currentFile = "iwyb.mp3"
+	currentFile = ""
+	filenames = []
+	currentIndex = 0;
 	def play(self):
 		driver = Driver()
+		self.currentFile=self.filenames[self.currentIndex]
 		pygame.mixer.music.load(self.currentFile)
 		audiofile = eyed3.load(self.currentFile)
 		driver.write_text(audiofile.tag.title + ', ' + audiofile.tag.artist + ', ' + audiofile.tag.album, 20)
 		pygame.mixer.music.play(0)
 		while(pygame.mixer.music.get_busy()):
 			continue
+		if self.currentIndex < len(self.filenames):
+			self.next()
+			
 		print("Finished!")
+
+	def next(self):
+		self.currentIndex += 1
+		self.play()
+		
+	def index(self):
+		count = 0
+		driver = Driver()
+		driver.write_text("Indexing...", 20)
+		for folder, subs, files in os.walk("/home/pi/Music"):
+			for filename in files:
+				musicFile = os.path.join(folder, filename)
+				self.filenames.append(musicFile)
+				print(musicFile)
+				count += 1
+		driver.write_text("%d files indexed!" % count, 20)
 
 class Driver():		
 	papirus = Papirus()
@@ -73,6 +95,7 @@ class Driver():
 def main():
 	pygame.init()
 	mPlayer = MusicPlayer()
+	mPlayer.index()
 	mPlayer.play()
 
 if __name__ == '__main__':
