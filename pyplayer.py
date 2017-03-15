@@ -18,19 +18,19 @@ if user != 0:
 
 WHITE = 1
 BLACK = 0
-
 SIZE = 16
-
 MODE_PLAY = 100
 MODE_SELECT = 101
+MODE_UPDATE = 102
 
-pygame.mixer.music.set_endevent(MUSIC_ENDED)
+#pygame.mixer.music.set_endevent(MUSIC_ENDED)
 
 class MusicPlayer:
 	currentFile = ""
 	filenames = []
 	currentIndex = 0
 	driver = None
+	currentVol = 1
 	mode = MODE_PLAY
 	button2 = Button(16)
 	button5 = Button(26)
@@ -48,53 +48,100 @@ class MusicPlayer:
 			print("Pause")
 			self.pause()
 		else:
-			print("Resume")
-			self.resume()
+			if self.mode == MODE_SELECT:
+				print("Resume")
+				self.resume()
+			else:
+				if self.mode == MODE_UPDATE:
+					self.stop()
+					self.play()
 	
 	def button3Pressed(self, button):
-		print("Increase volume")
 		if self.mode == MODE_PLAY:
 			self.increaseVolume()
+		else: 
+			if self.mode == MODE_SELECT:
+				self.next()
+				self.updateDisplay(self.filenames[self.currentIndex])
+				self.mode = MODE_UPDATE
 		
 	def button2Pressed(self, button):
-		print("Decrease volume")
 		if self.mode == MODE_PLAY:
 			self.decreaseVolume()
+		else:
+			if self.mode == MODE_SELECT:
+				self.previous()
+				self.updateDisplay(self.filenames[self.currentIndex])
+				self.mode = MODE_UPDATE
 	
 	def eventloop(self):
 		while(True):
 			if pygame.mixer.music.get_busy() == False:
 				if self.currentIndex < len(self.filenames):
-					self.next()
+					self.playNext()
+					self.updateDisplay(self.filenames[self.currentIndex])
 				else:
 					print("Finished")
 					break
+			sleep(0.05)
 			continue
 		print("Finished!")
 
 	def pause(self):
 		pygame.mixer.music.pause()
+
 	def resume(self):
 		pygame.mixer.music.unpause()
+		self.mode = MODE_PLAY
+
+	def stop(self):
+		pygame.mixer.music.stop()
+
 	def increaseVolume(self):
 		currVol = pygame.mixer.music.get_volume()
 		if currVol < 1.0:
-			pygame.mixer.music.set_volume(currVol + 0.05)
+			newVol = currVol + 0.01
+			pygame.mixer.music.set_volume(newVol)
+			print("Volume = %f" % newVol)
+
 	def decreaseVolume(self):
 		currVol = pygame.mixer.music.get_volume()
 		if currVol > 0:
-			pygame.mixer.music.set_volume(currVol - 0.05)
+			newVol = currVol - 0.01
+			pygame.mixer.music.set_volume(newVol)
+			print("Volume = %f" % newVol)
+
 	def play(self):
 		self.currentFile=self.filenames[self.currentIndex]
 		pygame.mixer.music.load(self.currentFile)
-		audiofile = eyed3.load(self.currentFile)
-		self.driver.write_text(audiofile.tag.title + ', ' + audiofile.tag.artist + ', ' + audiofile.tag.album, 14)
 		pygame.mixer.music.play(0)
+		self.mode = MODE_PLAY
 
 	def next(self):
-		self.currentIndex += 1
+		if self.currentIndex < len(self.filenames):
+			self.currentIndex += 1
+		else:
+			self.currentIndex = 0
+
+	def playNext(self):
+		self.next()
 		self.play()
+	
+	def previous(self):
+		if self.currentIndex > 0:
+			self.currentIndex -= 1
+		else:
+			self.currentIndex = len(self.filenames) - 1
+
+	def playPrevious(self):
+		self.previous()
+		self.play()
+
+	def updateDisplay(self, filename):
+		audiofile = eyed3.load(filename)
+		self.driver.write_text(audiofile.tag.title + ', ' + audiofile.tag.artist + ', ' + audiofile.tag.album, 14)
 		
+
 	def index(self):
 		count = 0
 		self.driver.write_text("Indexing...", 16)
@@ -141,6 +188,7 @@ def main():
 	mPlayer = MusicPlayer(driver)
 	mPlayer.index()
 	mPlayer.play()
+	mPlayer.updateDisplay(mPlayer.currentFile)
 	mPlayer.eventloop()
 
 if __name__ == '__main__':
