@@ -8,7 +8,7 @@ from PIL import ImageFont
 import argparse
 import pygame, time
 import eyed3
-import RPi.GPIO as GPIO
+from gpiozero import Button
 from time import sleep
  
 user = os.getuid()
@@ -18,39 +18,51 @@ if user != 0:
 
 WHITE = 1
 BLACK = 0
-MUSIC_ENDED=100
-BTN1_SW3 = 20
-BTN2_SW5 = 26
-BTN4_SW2 = 16
+
 SIZE = 16
 
-pygame.mixer.music.set_endevent(MUSIC_ENDED)
+MODE_PLAY = 100
+MODE_SELECT = 101
 
-def processEvent(self, event):
-	if event.type == MUSIC_ENDED:
-		playing=0
-		pygame.mixer.music.fadeout(5)
-		return None
-	else:
-		return event
+pygame.mixer.music.set_endevent(MUSIC_ENDED)
 
 class MusicPlayer:
 	currentFile = ""
 	filenames = []
 	currentIndex = 0
 	driver = None
+	mode = MODE_PLAY
+	button2 = Button(16)
+	button5 = Button(26)
+	button3 = Button(20)
 
 	def __init__(self, videoDriver):
 		self.driver = videoDriver
+		self.button5.when_pressed = self.button5Pressed
+		self.button3.when_pressed = self.button3Pressed
+		self.button2.when_pressed = self.button2Pressed
+
+	def button5Pressed(self, button):
+		if self.mode == MODE_PLAY:
+			self.mode = MODE_SELECT
+			print("Pause")
+			self.pause()
+		else:
+			print("Resume")
+			self.resume()
+	
+	def button3Pressed(self, button):
+		print("Increase volume")
+		if self.mode == MODE_PLAY:
+			self.increaseVolume()
+		
+	def button2Pressed(self, button):
+		print("Decrease volume")
+		if self.mode == MODE_PLAY:
+			self.decreaseVolume()
+	
 	def eventloop(self):
 		while(True):
-			if GPIO.input(BTN1_SW3) == False:
- 				self.driver.write_text("THREE", SIZE)
-			if GPIO.input(BTN2_SW5) == False:
-				self.driver.write_text("FIVE", SIZE)
- 			if GPIO.input(BTN4_SW2) == False:
-				self.driver.write_text("TWO", SIZE)
-			#sleep(0.1)
 			if pygame.mixer.music.get_busy() == False:
 				if self.currentIndex < len(self.filenames):
 					self.next()
@@ -58,15 +70,25 @@ class MusicPlayer:
 					print("Finished")
 					break
 			continue
-		#if self.currentIndex < len(self.filenames):
-			#self.next()			
 		print("Finished!")
-		
+
+	def pause(self):
+		pygame.mixer.music.pause()
+	def resume(self):
+		pygame.mixer.music.unpause()
+	def increaseVolume(self):
+		currVol = pygame.mixer.music.get_volume()
+		if currVol < 1.0:
+			pygame.mixer.music.set_volume(currVol + 0.05)
+	def decreaseVolume(self):
+		currVol = pygame.mixer.music.get_volume()
+		if currVol > 0:
+			pygame.mixer.music.set_volume(currVol - 0.05)
 	def play(self):
 		self.currentFile=self.filenames[self.currentIndex]
 		pygame.mixer.music.load(self.currentFile)
 		audiofile = eyed3.load(self.currentFile)
-		self.driver.write_text(audiofile.tag.title + ', ' + audiofile.tag.artist + ', ' + audiofile.tag.album, 20)
+		self.driver.write_text(audiofile.tag.title + ', ' + audiofile.tag.artist + ', ' + audiofile.tag.album, 14)
 		pygame.mixer.music.play(0)
 
 	def next(self):
@@ -114,11 +136,6 @@ class Driver():
 		self.papirus.update()
 
 def main():
-
-	GPIO.setmode(GPIO.BCM)
-	GPIO.setup(BTN1_SW3, GPIO.IN)
-	GPIO.setup(BTN2_SW5, GPIO.IN)
-	GPIO.setup(BTN4_SW2, GPIO.IN)
 	pygame.init()
 	driver = Driver()
 	mPlayer = MusicPlayer(driver)
