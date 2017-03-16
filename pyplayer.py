@@ -139,27 +139,42 @@ class MusicPlayer:
 
 	def updateDisplay(self, filename):
 		audiofile = eyed3.load(filename)
-		self.driver.write_text(audiofile.tag.title + ', ' + audiofile.tag.artist + ', ' + audiofile.tag.album, 14)
+		lines = [];
+		lines.append(audiofile.tag.title)
+		lines.append(audiofile.tag.artist)
+		lines.append(audiofile.tag.album)
+		self.driver.write_lines(lines, 14)
 		
 
 	def index(self):
 		count = 0
-		self.driver.write_text("Indexing...", 16)
+		self.driver.write_lines(["Indexing..."], 16)
 		for folder, subs, files in os.walk("/home/pi/Music"):
 			for filename in files:
 				musicFile = os.path.join(folder, filename)
 				self.filenames.append(musicFile)
 				print(musicFile)
 				count += 1
-		self.driver.write_text("%d files indexed!" % count, 20)
+		self.driver.write_lines(["%d files indexed!" % count], 20)
 
 class Driver():		
 	papirus = Papirus()
-	def write_text(self, text, size):
+	line_position=0
+	
+	def write_lines(self, lines, fontsize):
 		# initially set all white background
 		image = Image.new('1', self.papirus.size, WHITE)
 		# prepare for drawing
 		draw = ImageDraw.Draw(image)
+		self.line_position = 0
+		for line in lines:
+			self.line_position += 1
+			self.write_text(draw, line, fontsize)
+
+		self.papirus.display(image)
+		self.papirus.update()
+
+	def write_text(self, draw, text, size):
 		font = ImageFont.truetype('/usr/share/fonts/truetype/freefont/FreeMono.ttf', size)
 		# Calculate the max number of char to fit on line
 		line_size = (self.papirus.width / (size*0.65))
@@ -175,12 +190,11 @@ class Driver():
 				text_lines.append("")
 				current_line += 1
 				text_lines[current_line] += " " + word
-		current_line = 0
+		current_line = self.line_position - 1
 		for l in text_lines:
 			current_line += 1
 			draw.text( (0, ((size*current_line)-size)) , l, font=font, fill=BLACK)
-		self.papirus.display(image)
-		self.papirus.update()
+		self.line_position += (current_line - 1)
 
 def main():
 	pygame.init()
