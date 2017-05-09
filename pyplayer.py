@@ -32,15 +32,19 @@ class MusicPlayer:
 	driver = None
 	currentVol = 1
 	mode = MODE_PLAY
-	button2 = Button(16)
-	button5 = Button(26)
-	button3 = Button(20)
+	button2 = Button(16) #top button
+	button5 = Button(26) #center button
+	button3 = Button(20) #bottom button
+	button4 = Button(5) #left button
+	button1 = Button(6) #right button
 
 	def __init__(self, videoDriver):
 		self.driver = videoDriver
 		self.button5.when_pressed = self.button5Pressed
 		self.button3.when_pressed = self.button3Pressed
 		self.button2.when_pressed = self.button2Pressed
+		self.button1.when_pressed = self.button1Pressed
+		self.button4.when_pressed = self.button4Pressed
 
 	def button5Pressed(self, button):
 		if self.mode == MODE_PLAY:
@@ -55,6 +59,12 @@ class MusicPlayer:
 				if self.mode == MODE_UPDATE:
 					self.stop()
 					self.play()
+	
+	def button4Pressed(self, button):
+		if self.mode == MODE_PLAY:
+			self.playNext()
+		else:
+			self.next()
 	
 	def button3Pressed(self, button):
 		if self.mode == MODE_PLAY:
@@ -73,6 +83,12 @@ class MusicPlayer:
 				self.previous()
 				self.updateDisplay(self.filenames[self.currentIndex])
 				self.mode = MODE_UPDATE
+
+	def button1Pressed(self, button):
+		if self.mode == MODE_PLAY:
+			self.playNext()
+		else:
+			self.next()
 	
 	def eventloop(self):
 		while(True):
